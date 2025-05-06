@@ -84,16 +84,16 @@ def generate_with_gemini(prompt):
     except Exception as e:
         return f"Error: {e}"
 
-# Streamlit UI
+# Streamlit UI Config
 st.set_page_config(page_title="Reddit Newsbot", layout="wide")
 
-st.markdown("<h1 style='text-align: center;'>Reddit Newsbot</h1>", unsafe_allow_html=True)
-
-# Load and display the image centered
+# Top: Small logo on the left and title on the right
 image = Image.open("communityIcon_hrq90p2z27k11 (2).jpg")
-st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
-st.image(image, width=200)
-st.markdown("### Stay in the know with Reddit’s top trending tech discussions.")
+col_logo, col_title = st.columns([1, 10])
+with col_logo:
+    st.image(image, width=60)
+with col_title:
+    st.markdown("<h1>Reddit Newsbot</h1>", unsafe_allow_html=True)
 
 # App description
 with st.container():
@@ -111,7 +111,7 @@ with st.container():
     - Get AI assistance to understand key concepts and tools
     """)
 
-# Sidebar: filter & info
+# Sidebar
 with st.sidebar:
     st.header("🔍 Explore Topics")
     subreddits = [
@@ -130,9 +130,7 @@ with st.sidebar:
 
     st.markdown("---")
     st.subheader("ℹ️ About")
-    st.info("""
-    This tool fetches the latest hot Reddit posts from top tech and data subreddits.
-    """)
+    st.info("This tool fetches the latest hot Reddit posts from top tech and data subreddits.")
 
     st.subheader("📘 How to Use")
     st.markdown("""
@@ -142,41 +140,45 @@ with st.sidebar:
     - Use the provided link to view original thread
     """)
 
-# Show posts only after subreddit is selected (not default 'All')
+# Main area
 if sub_filter != "All":
     all_posts = fetch_posts(sub_filter, limit)
     if not all_posts:
         st.warning("No posts found.")
     else:
-        st.markdown(f"### 🔥 Hot posts from r/{sub_filter}")
+        st.markdown("---")
 
-        num_to_show = 5
-        if "visible_posts" not in st.session_state:
-            st.session_state.visible_posts = num_to_show
+        # Side-by-side layout for posts and AI explanation
+        left_col, right_col = st.columns([3, 1], gap="large")
 
-        for i, post in enumerate(all_posts[:st.session_state.visible_posts]):
-            with st.expander(f"{post['title']} ({post['score']} upvotes)"):
-                st.markdown(f"**Subreddit:** r/{post['subreddit']}")
-                st.markdown(f"**Published:** {post['publish_date'].strftime('%Y-%m-%d %H:%M:%S')}")
-                st.markdown(post["full_text"][:1500] + ("..." if len(post["full_text"]) > 1500 else ""))
-                st.markdown(f"[View on Reddit](https://reddit.com{post['url']})")
+        with left_col:
+            st.markdown(f"### 🔥 Hot posts from r/{sub_filter}")
 
-        if st.session_state.visible_posts < len(all_posts):
-            if st.button("Show More"):
-                st.session_state.visible_posts += 5
+            num_to_show = 5
+            if "visible_posts" not in st.session_state:
+                st.session_state.visible_posts = num_to_show
+
+            for i, post in enumerate(all_posts[:st.session_state.visible_posts]):
+                with st.expander(f"{post['title']} ({post['score']} upvotes)"):
+                    st.markdown(f"**Subreddit:** r/{post['subreddit']}")
+                    st.markdown(f"**Published:** {post['publish_date'].strftime('%Y-%m-%d %H:%M:%S')}")
+                    st.markdown(post["full_text"][:1500] + ("..." if len(post["full_text"]) > 1500 else ""))
+                    st.markdown(f"[View on Reddit](https://reddit.com{post['url']})")
+
+            if st.session_state.visible_posts < len(all_posts):
+                if st.button("Show More"):
+                    st.session_state.visible_posts += 5
+
+        with right_col:
+            st.subheader("🧠 Need Help Understanding a Keyword?")
+            keyword = st.text_input("Enter a keyword you'd like explained:")
+            if keyword:
+                with st.spinner("Thinking..."):
+                    explanation = generate_with_gemini(f"Explain the concept of '{keyword}' in simple terms for a data enthusiast.")
+                    st.markdown(f"**Explanation for '{keyword}':**")
+                    st.markdown(explanation)
 else:
     st.info("👈 Select a subreddit from the sidebar to begin exploring hot topics.")
-
-# Keyword explanation
-st.markdown("---")
-st.subheader("🧠 Need Help Understanding a Keyword?")
-keyword = st.text_input("Enter a keyword you'd like explained (optional):")
-
-if keyword:
-    with st.spinner("Thinking..."):
-        explanation = generate_with_gemini(f"Explain the concept of '{keyword}' in simple terms for a data enthusiast.")
-        st.markdown(f"**Explanation for '{keyword}':**")
-        st.markdown(explanation)
 
 # Footer
 st.markdown("---")
